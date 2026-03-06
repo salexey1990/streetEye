@@ -6,6 +6,7 @@
 
 - **NestJS API** (`apps/api`) - Backend REST API running on port 3000
 - **Next.js Web App** (`apps/web`) - Frontend application running on port 3001
+- **Content Service** (`apps/content-service`) - Additional NestJS backend running on port 3002
 - **Shared Packages** (`packages/*`) - Reusable libraries and configurations
 
 ### Architecture
@@ -14,7 +15,8 @@
 streetEye/
 ├── apps/
 │   ├── api/           # NestJS backend (port 3000)
-│   └── web/           # Next.js frontend (port 3001)
+│   ├── web/           # Next.js frontend (port 3001)
+│   └── content-service/ # NestJS backend (port 3002)
 └── packages/
     ├── @repo/api      # Shared NestJS resources, DTOs, entities
     ├── @repo/ui       # Shared React UI components
@@ -57,6 +59,7 @@ pnpm dev
 This starts:
 - NestJS API on http://localhost:3000
 - Next.js Web on http://localhost:3001
+- Content Service on http://localhost:3002
 
 ### Build
 
@@ -118,6 +121,13 @@ pnpm format        # Format code with Prettier
 - NestJS application with modular structure
 - Current module: `LinksModule` for managing links
 - Uses class-based DTOs for validation
+- CORS enabled for frontend communication
+
+#### Content Service (`apps/content-service`)
+
+- NestJS application (same structure as `apps/api`)
+- Runs on port 3002
+- Uses shared configurations from `@repo/eslint-config`, `@repo/jest-config`, `@repo/typescript-config`
 - CORS enabled for frontend communication
 
 #### Web (`apps/web`)
