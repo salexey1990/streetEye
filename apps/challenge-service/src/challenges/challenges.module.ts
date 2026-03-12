@@ -20,6 +20,7 @@ import {
   HeatModeCacheService,
 } from './managers';
 import { ChallengeMapper } from './mappers/challenge.mapper';
+import { RedisService, RabbitMQService } from '@repo/api';
 
 @Module({
   imports: [
@@ -42,6 +43,8 @@ import { ChallengeMapper } from './mappers/challenge.mapper';
     HeatModeEventPublisher,
     HeatModeCacheService,
     ChallengeMapper,
+    RedisService,
+    RabbitMQService,
   ],
   exports: [
     ChallengesService,
@@ -50,6 +53,8 @@ import { ChallengeMapper } from './mappers/challenge.mapper';
     ChallengesRepository,
     HeatModeSessionManager,
     ChallengeMapper,
+    RedisService,
+    RabbitMQService,
   ],
 })
 export class ChallengesModule {}

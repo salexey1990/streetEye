@@ -94,6 +94,51 @@ services:
       - streetEye-network
 
   # ===========================================
+  # Redis (Shared Cache & Session Storage)
+  # ===========================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD:-redis}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - streetEye-network
+
+  # ===========================================
+  # RabbitMQ (Message Broker)
+  # ===========================================
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-rabbitmq}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-rabbitmq}
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - streetEye-network
+
+  # ===========================================
   # API Service Databases (placeholder)
   # ===========================================
   # Uncomment and configure when api needs a database
@@ -133,6 +178,10 @@ volumes:
   content-service-postgres_data:
     driver: local
   content-service-postgres_test_data:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
     driver: local
   # api-postgres_data:
   #   driver: local

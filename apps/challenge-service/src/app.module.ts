@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, Reflector } from '@nestjs/core';
 
 import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
@@ -12,8 +12,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 import { ChallengesModule } from './challenges/challenges.module';
-import { RedisService, RabbitMQService, AuthContextService } from '@repo/api';
-import { AllExceptionsFilter, RolesGuard } from '@repo/api';
+import { RedisService, RabbitMQService, AuthContextService, RolesGuard } from '@repo/api';
+import { AllExceptionsFilter } from '@repo/api';
 
 import { Challenge, ChallengeCategory, ChallengeLocation, HeatModeSession } from './challenges/entities';
 
@@ -73,7 +73,8 @@ import { Challenge, ChallengeCategory, ChallengeLocation, HeatModeSession } from
     },
     {
       provide: APP_GUARD,
-      useClass: RolesGuard,
+      useFactory: (reflector: Reflector) => new RolesGuard(reflector),
+      inject: [Reflector],
     },
   ],
 })
