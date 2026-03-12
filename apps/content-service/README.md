@@ -57,6 +57,57 @@ $ pnpm run test:e2e
 $ pnpm run test:cov
 ```
 
+## Database
+
+This project uses PostgreSQL with TypeORM. Docker Compose is configured at the **repository root** for all services.
+
+### Start databases (from repo root)
+
+```bash
+# From repository root
+# Start content-service database (port 5432)
+$ pnpm run db:up
+# Or from app directory
+$ pnpm run db:up  # runs: cd ../../ && docker-compose up -d content-service-db
+
+# Start test database (port 5433)
+$ pnpm run db:test:up
+
+# Start all databases for all services
+$ pnpm run db:all:up  # or docker-compose up -d from repo root
+
+# Stop all databases
+$ pnpm run db:all:down
+
+# View logs
+$ pnpm run db:logs
+```
+
+### Environment variables (at repo root)
+
+Copy `.env.example` to `.env` at the repository root:
+
+```env
+# Content Service Configuration
+CONTENT_SERVICE_DB_HOST=localhost
+CONTENT_SERVICE_DB_PORT=5432
+CONTENT_SERVICE_DB_USERNAME=postgres
+CONTENT_SERVICE_DB_PASSWORD=postgres
+CONTENT_SERVICE_DB_DATABASE=content_db
+CONTENT_SERVICE_PORT=3002
+
+NODE_ENV=development
+```
+
+For tests, the app uses `.env.test` with test database on port 5433.
+
+### Docker Compose services
+
+| Service | Container | Port | Database |
+|---------|-----------|------|----------|
+| `content-service-db` | content-service-db | 5432 | content_db |
+| `content-service-db-test` | content-service-db-test | 5433 | content_db_test |
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

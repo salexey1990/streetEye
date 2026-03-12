@@ -12,16 +12,29 @@
     "test:watch": "jest --watch",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\""
+    "test:prepare": "dotenv -e ../../.env.test -- echo 'Test environment ready'",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "db:up": "cd ../../ && docker-compose up -d content-service-db",
+    "db:down": "cd ../../ && docker-compose stop content-service-db",
+    "db:test:up": "cd ../../ && docker-compose up -d content-service-db-test",
+    "db:test:down": "cd ../../ && docker-compose stop content-service-db-test",
+    "db:restart": "cd ../../ && docker-compose restart content-service-db",
+    "db:logs": "cd ../../ && docker-compose logs -f content-service-db",
+    "db:all:up": "cd ../../ && docker-compose up -d",
+    "db:all:down": "cd ../../ && docker-compose down"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.11",
+    "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.1.11",
     "@nestjs/platform-express": "^11.1.11",
+    "@nestjs/typeorm": "^11.0.0",
     "@repo/api": "workspace:*",
+    "escape-html": "^1.0.3",
+    "pg": "^8.20.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "escape-html": "^1.0.3"
+    "typeorm": "^0.3.28"
   },
   "devDependencies": {
     "@jest/globals": "^30.2.0",
