@@ -2,6 +2,52 @@ version: '3.8'
 
 services:
   # ===========================================
+  # Auth Service Databases
+  # ===========================================
+
+  # Main database for auth-service (port 5431)
+  auth-service-db:
+    image: postgres:15-alpine
+    container_name: auth-service-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: streeteye_auth
+    ports:
+      - "5431:5432"
+    volumes:
+      - auth-service-postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d streeteye_auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - streetEye-network
+
+  # Test database for auth-service (port 5436)
+  auth-service-db-test:
+    image: postgres:15-alpine
+    container_name: auth-service-db-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: streeteye_auth_test
+    ports:
+      - "5436:5432"
+    volumes:
+      - auth-service-postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d streeteye_auth_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - streetEye-network
+
+  # ===========================================
   # Challenge Service Databases
   # ===========================================
 
@@ -171,6 +217,10 @@ services:
   # Use unique ports and database names
 
 volumes:
+  auth-service-postgres_data:
+    driver: local
+  auth-service-postgres_test_data:
+    driver: local
   challenge-service-postgres_data:
     driver: local
   challenge-service-postgres_test_data:

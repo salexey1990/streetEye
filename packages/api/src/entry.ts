@@ -6,12 +6,14 @@ export { UpdateLinkDto } from './links/dto/update-link.dto';
 // Guards
 export { AuthGuard } from './guards/auth.guard';
 export { RolesGuard } from './guards/roles.guard';
+export { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 // Filters
 export { AllExceptionsFilter, type ErrorResponse } from './filters/all-exceptions.filter';
 
 // Decorators
 export { ROLES_KEY, Roles } from './decorators/roles.decorator';
+export { IS_PUBLIC_KEY, Public } from './decorators/public.decorator';
 
 // Services
 export { RedisService } from './services/redis.service';
@@ -26,3 +28,6 @@ export {
   type PaginationMeta,
   type PaginatedResult,
 } from './utils/pagination.util';
+
+// Constants
+export { AUTH_ERROR_CODES, AUTH_HTTP_STATUS } from './constants/auth-error-codes';

@@ -9,8 +9,15 @@ import { ROLES_KEY } from '../decorators/roles.decorator';
 
 /**
  * Guardian that checks if the user has the required roles.
- * 
+ *
  * Uses the @Roles() decorator to determine required roles for a route.
+ *
+ * @example
+ * ```typescript
+ * @Roles('admin')
+ * @Post('users')
+ * createUser() { ... }
+ * ```
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -29,15 +36,19 @@ export class RolesGuard implements CanActivate {
     const { user } = context.switchToHttp().getRequest();
 
     if (!user) {
-      throw new ForbiddenException('UNAUTHORIZED');
+      throw new ForbiddenException({
+        code: 'UNAUTHORIZED',
+        message: 'User not authenticated',
+      });
     }
 
-    // In a real implementation, check user roles from the token
-    // For now, we'll check if the user has the required role
     const hasRole = requiredRoles.includes(user.role);
 
     if (!hasRole) {
-      throw new ForbiddenException('ADMIN_REQUIRED');
+      throw new ForbiddenException({
+        code: 'ADMIN_REQUIRED',
+        message: 'Admin role required',
+      });
     }
 
     return true;
