@@ -491,6 +491,139 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
+  apps/user-service:
+    dependencies:
+      '@nestjs/common':
+        specifier: ^11.1.11
+        version: 11.1.11(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/config':
+        specifier: ^4.0.3
+        version: 4.0.3(@nestjs/common@11.1.11)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^11.1.11
+        version: 11.1.11(@nestjs/common@11.1.11)(@nestjs/microservices@11.1.16)(@nestjs/platform-express@11.1.11)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/jwt':
+        specifier: ^11.0.0
+        version: 11.0.2(@nestjs/common@11.1.11)
+      '@nestjs/microservices':
+        specifier: ^11.1.11
+        version: 11.1.16(@nestjs/common@11.1.11)(@nestjs/core@11.1.11)(amqplib@0.10.9)(ioredis@5.10.0)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/platform-express':
+        specifier: ^11.1.11
+        version: 11.1.11(@nestjs/common@11.1.11)(@nestjs/core@11.1.11)
+      '@nestjs/swagger':
+        specifier: ^11.2.0
+        version: 11.2.6(@nestjs/common@11.1.11)(@nestjs/core@11.1.11)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
+      '@nestjs/terminus':
+        specifier: ^11.0.0
+        version: 11.1.1(@nestjs/common@11.1.11)(@nestjs/core@11.1.11)(@nestjs/microservices@11.1.16)(@nestjs/typeorm@11.0.0)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28)
+      '@nestjs/throttler':
+        specifier: ^6.4.0
+        version: 6.5.0(@nestjs/common@11.1.11)(@nestjs/core@11.1.11)(reflect-metadata@0.2.2)
+      '@nestjs/typeorm':
+        specifier: ^11.0.0
+        version: 11.0.0(@nestjs/common@11.1.11)(@nestjs/core@11.1.11)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28)
+      '@repo/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      amqplib:
+        specifier: ^0.10.5
+        version: 0.10.9
+      class-transformer:
+        specifier: ^0.5.1
+        version: 0.5.1
+      class-validator:
+        specifier: ^0.14.2
+        version: 0.14.4
+      ioredis:
+        specifier: ^5.6.1
+        version: 5.10.0
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      stripe:
+        specifier: ^17.0.0
+        version: 17.7.0
+      typeorm:
+        specifier: ^0.3.28
+        version: 0.3.28(ioredis@5.10.0)(pg@8.20.0)(ts-node@10.9.2)
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
+    devDependencies:
+      '@jest/globals':
+        specifier: ^30.2.0
+        version: 30.2.0
+      '@nestjs/cli':
+        specifier: ^11.0.14
+        version: 11.0.14(@types/node@22.19.3)
+      '@nestjs/schematics':
+        specifier: ^11.0.9
+        version: 11.0.9(typescript@5.5.4)
+      '@nestjs/testing':
+        specifier: ^11.1.11
+        version: 11.1.11(@nestjs/common@11.1.11)(@nestjs/core@11.1.11)(@nestjs/microservices@11.1.16)(@nestjs/platform-express@11.1.11)
+      '@repo/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@repo/jest-config':
+        specifier: workspace:*
+        version: link:../../packages/jest-config
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/amqplib':
+        specifier: ^0.10.7
+        version: 0.10.8
+      '@types/express':
+        specifier: ^4.17.25
+        version: 4.17.25
+      '@types/ioredis':
+        specifier: ^4.28.10
+        version: 4.28.10
+      '@types/node':
+        specifier: ^22.19.3
+        version: 22.19.3
+      '@types/supertest':
+        specifier: ^6.0.3
+        version: 6.0.3
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      eslint:
+        specifier: ^9.39.2
+        version: 9.39.2
+      jest:
+        specifier: ^30.2.0
+        version: 30.2.0(@types/node@22.19.3)(ts-node@10.9.2)
+      source-map-support:
+        specifier: ^0.5.21
+        version: 0.5.21
+      supertest:
+        specifier: ^7.2.2
+        version: 7.2.2
+      ts-jest:
+        specifier: ^29.4.6
+        version: 29.4.6(@babel/core@7.28.5)(jest@30.2.0)(typescript@5.5.4)
+      ts-loader:
+        specifier: ^9.5.4
+        version: 9.5.4(typescript@5.5.4)(webpack@5.104.1)
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@types/node@22.19.3)(typescript@5.5.4)
+      tsconfig-paths:
+        specifier: ^4.2.0
+        version: 4.2.0
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+
   apps/web:
     dependencies:
       '@repo/ui':
@@ -7696,6 +7829,14 @@ packages:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
     dev: true
+
+  /stripe@17.7.0:
+    resolution: {integrity: sha512-aT2BU9KkizY9SATf14WhhYVv2uOapBWX0OFWF4xvcj1mPaNotlSc2CsxpS4DS46ZueSppmCF5BX1sNYBtwBvfw==}
+    engines: {node: '>=12.*'}
+    dependencies:
+      '@types/node': 22.19.3
+      qs: 6.14.1
+    dev: false
 
   /strtok3@10.3.4:
     resolution: {integrity: sha512-KIy5nylvC5le1OdaaoCJ07L+8iQzJHGH6pWDuzS+d07Cu7n1MZ2x26P8ZKIWfbK02+XIL8Mp4RkWeqdUCrDMfg==}

@@ -1,0 +1,18 @@
+{
+  "extends": "@repo/typescript-config/nestjs.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strictNullChecks": true,
+    "incremental": false,
+    "paths": {
+      "@users/*": ["src/users/*"],
+      "@config/*": ["src/config/*"],
+      "@shared/*": ["src/shared/*"],
+      "@webhooks/*": ["src/webhooks/*"],
+      "@events/*": ["src/events/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "jest.config.ts"]
+}
