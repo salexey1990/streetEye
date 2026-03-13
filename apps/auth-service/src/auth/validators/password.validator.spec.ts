@@ -86,7 +86,6 @@ describe('IsPasswordStrongConstraint', () => {
         property: 'password',
         value: 'weak',
         constraints: [],
-        target: {},
         targetName: 'TestDto',
       });
 

@@ -1,42 +1,21 @@
-import {
-  Injectable,
-  Logger,
-  UnauthorizedException,
-  ConflictException,
-  BadRequestException,
-  NotFoundException,
-  GoneException,
-} from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService as NestJwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
-import * as speakeasy from 'otplib';
-import * as qrcode from 'qrcode';
 
+import { TokenService, PasswordService, TwoFactorService, TokenPair } from '../services';
 import { AuthTokenRepository } from '../repositories/auth-token.repository';
 import { EmailVerificationRepository } from '../repositories/email-verification.repository';
 import { PasswordResetRepository } from '../repositories/password-reset.repository';
 import { EventsService } from '../../events/events.service';
 import { AuthMapper } from '../mappers/auth.mapper';
+import { IRefreshTokenStrategy, REFRESH_TOKEN_STRATEGY } from '../strategies';
 import {
   EmailExistsException,
   InvalidCredentialsException,
   EmailNotVerifiedException,
-  AccountLockedException,
   TwoFactorRequiredException,
-  InvalidTwoFactorCodeException,
-  TokenExpiredException,
-  TokenReuseDetectedException,
-  TwoFactorNotEnabledException,
   TwoFactorAlreadyEnabledException,
 } from '../exceptions';
-import {
-  JWT_CONFIG,
-  PASSWORD_CONFIG,
-  EMAIL_VERIFICATION_CONFIG,
-  TWO_FACTOR_CONFIG,
-} from '../auth.constants';
+import { JWT_CONFIG, EMAIL_VERIFICATION_CONFIG } from '../auth.constants';
 
 export interface RegisterResult {
   userId: string;
@@ -56,94 +35,32 @@ export interface LoginResult {
   isEmailVerified: boolean;
 }
 
-export interface TokenPair {
-  accessToken: string;
-  refreshToken: string;
-}
-
 /**
  * Service handling user authentication operations.
- *
+ * 
  * Responsibilities:
  * - User registration with email verification
  * - User authentication (login/logout)
- * - JWT token generation and validation
- * - Password reset flow
- * - Two-factor authentication (TOTP)
+ * - Session management
+ * - Coordinating token, password, and 2FA services
  */
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly bcryptRounds: number;
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly jwtService: NestJwtService,
+    private readonly tokenService: TokenService,
+    private readonly passwordService: PasswordService,
+    private readonly twoFactorService: TwoFactorService,
     private readonly authTokenRepo: AuthTokenRepository,
     private readonly emailVerificationRepo: EmailVerificationRepository,
     private readonly passwordResetRepo: PasswordResetRepository,
     private readonly eventsService: EventsService,
     private readonly mapper: AuthMapper,
-  ) {
-    const isDev = this.configService.get<string>('NODE_ENV') === 'development';
-    this.bcryptRounds = this.configService.get<number>(
-      'BCRYPT_ROUNDS',
-      isDev ? PASSWORD_CONFIG.BCRYPT_ROUNDS_DEV : PASSWORD_CONFIG.BCRYPT_ROUNDS,
-    );
-  }
-
-  /**
-   * Hashes a password using bcrypt.
-   * @param password - Plain text password to hash
-   * @returns Hashed password
-   */
-  async hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, this.bcryptRounds);
-  }
-
-  /**
-   * Verifies a password against a hash.
-   * @param password - Plain text password
-   * @param hash - Hashed password to compare against
-   * @returns True if password matches
-   */
-  async verifyPassword(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
-  }
-
-  /**
-   * Generates a 6-digit verification code.
-   */
-  generateVerificationCode(): string {
-    return Array.from({ length: EMAIL_VERIFICATION_CONFIG.CODE_LENGTH }, () =>
-      crypto.randomInt(0, 10).toString(),
-    ).join('');
-  }
-
-  /**
-   * Hashes a token using SHA-256.
-   */
-  hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
-  }
-
-  /**
-   * Generates JWT access and refresh tokens.
-   */
-  generateTokens(userId: string, email: string): TokenPair {
-    const accessToken = this.jwtService.sign(
-      { sub: userId, email, type: 'access' },
-      {
-        expiresIn: JWT_CONFIG.ACCESS_TOKEN_TTL,
-        issuer: JWT_CONFIG.ISSUER,
-        audience: JWT_CONFIG.AUDIENCE,
-      },
-    );
-
-    const refreshToken = crypto.randomUUID();
-
-    return { accessToken, refreshToken };
-  }
+    @Inject(REFRESH_TOKEN_STRATEGY)
+    private readonly refreshTokenStrategy: IRefreshTokenStrategy,
+  ) {}
 
   /**
    * Registers a new user.
@@ -160,37 +77,31 @@ export class AuthService {
     this.logger.log(`Registering user: ${email}`);
 
     // TODO: Check if email exists in User Service
-    // For now, simulate with random delay
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Hash password
-    const passwordHash = await this.hashPassword(password);
+    const passwordHash = await this.passwordService.hash(password);
 
     // TODO: Create user in User Service
-    const userId = crypto.randomUUID();
+    const userId = this.generateUserId();
 
     // Generate tokens
-    const tokens = this.generateTokens(userId, email);
+    const tokens = this.tokenService.generateTokenPair(userId, email);
 
     // Store refresh token
-    const tokenHash = this.hashToken(tokens.refreshToken);
-    const expiresAt = new Date(
-      Date.now() + JWT_CONFIG.REFRESH_TOKEN_TTL * 1000,
+    await this.authTokenRepo.createRefreshToken(
+      userId,
+      this.tokenService.hashToken(tokens.refreshToken),
+      new Date(Date.now() + JWT_CONFIG.REFRESH_TOKEN_TTL * 1000),
     );
-    await this.authTokenRepo.createRefreshToken(userId, tokenHash, expiresAt);
 
     // Create email verification
-    const code = this.generateVerificationCode();
-    const codeHash = this.hashToken(code);
+    const code = this.tokenService.generateVerificationCode();
+    const codeHash = this.tokenService.hashToken(code);
     const codeExpiresAt = new Date(
       Date.now() + EMAIL_VERIFICATION_CONFIG.CODE_TTL_HOURS * 3600000,
     );
-    await this.emailVerificationRepo.create(
-      userId,
-      email,
-      codeHash,
-      codeExpiresAt,
-    );
+    await this.emailVerificationRepo.create(userId, email, codeHash, codeExpiresAt);
 
     // Publish event
     await this.eventsService.publishUserRegistered(userId, email);
@@ -221,38 +132,29 @@ export class AuthService {
     this.logger.log(`Login attempt for: ${email}`);
 
     // TODO: Get user from User Service
-    // For now, simulate
-    const userId = crypto.randomUUID();
-    const passwordHash = await this.hashPassword('dummy'); // Would come from DB
-    const isEmailVerified = true; // Would come from DB
-    const is2FAEnabled = false; // Would come from DB
+    const userId = this.generateUserId();
+    const passwordHash = await this.passwordService.hash('dummy');
+    const isEmailVerified = true;
+    const is2FAEnabled = false;
 
-    // Verify password
-    const isValid = await this.verifyPassword(password, passwordHash);
-    if (!isValid) {
-      await this.eventsService.publishLoginFailed(email, undefined, 'INVALID_PASSWORD');
-      throw new InvalidCredentialsException();
-    }
+    // Validate password
+    await this.validatePassword(password, passwordHash, email);
 
-    // Check email verification
-    if (!isEmailVerified) {
-      throw new EmailNotVerifiedException(email);
-    }
+    // Validate email verification
+    this.validateEmailVerification(isEmailVerified, email);
 
-    // Check 2FA
-    if (is2FAEnabled && !twoFactorCode) {
-      throw new TwoFactorRequiredException('totp');
-    }
+    // Validate 2FA
+    this.validateTwoFactor(is2FAEnabled, twoFactorCode);
 
     // Generate tokens
-    const tokens = this.generateTokens(userId, email);
+    const tokens = this.tokenService.generateTokenPair(userId, email);
 
     // Store refresh token
-    const tokenHash = this.hashToken(tokens.refreshToken);
-    const expiresAt = new Date(
-      Date.now() + JWT_CONFIG.REFRESH_TOKEN_TTL * 1000,
+    await this.authTokenRepo.createRefreshToken(
+      userId,
+      this.tokenService.hashToken(tokens.refreshToken),
+      new Date(Date.now() + JWT_CONFIG.REFRESH_TOKEN_TTL * 1000),
     );
-    await this.authTokenRepo.createRefreshToken(userId, tokenHash, expiresAt);
 
     // Publish event
     await this.eventsService.publishUserLoggedIn(userId);
@@ -268,45 +170,45 @@ export class AuthService {
   }
 
   /**
+   * Refreshes access token using refresh token.
+   * @param refreshToken - Current refresh token
+   * @returns New token pair
+   */
+  async refreshTokens(refreshToken: string): Promise<TokenPair> {
+    const payload = await this.refreshTokenStrategy.validate(refreshToken);
+    return this.refreshTokenStrategy.rotate(refreshToken, payload.userId, payload.email);
+  }
+
+  /**
+   * Logs out a user by revoking refresh token.
+   * @param refreshToken - Refresh token to revoke
+   */
+  async logout(refreshToken: string): Promise<void> {
+    await this.refreshTokenStrategy.revoke(refreshToken);
+  }
+
+  /**
+   * Logs out all user sessions.
+   * @param userId - User ID
+   */
+  async logoutAll(userId: string): Promise<void> {
+    await this.refreshTokenStrategy.revokeAll(userId);
+  }
+
+  /**
    * Enables two-factor authentication.
    * @param userId - User ID
+   * @param email - User email
    * @returns TOTP secret and QR code
    */
-  async enableTwoFactor(userId: string): Promise<{
-    secret: string;
-    qrCode: string;
-    backupCodes: string[];
-  }> {
+  async enableTwoFactor(userId: string, email: string) {
     // Check if already enabled
-    // TODO: Check in database
-    const isEnabled = false;
+    const isEnabled = false; // TODO: Check in database
     if (isEnabled) {
       throw new TwoFactorAlreadyEnabledException();
     }
 
-    // Generate TOTP secret
-    const secret = speakeasy.authenticator.generateSecret();
-
-    // Generate backup codes
-    const backupCodes = Array.from(
-      { length: TWO_FACTOR_CONFIG.BACKUP_CODES_COUNT },
-      () =>
-        Array.from({ length: TWO_FACTOR_CONFIG.BACKUP_CODES_LENGTH }, () =>
-          crypto.randomInt(0, 10).toString(),
-        ).join(''),
-    );
-
-    // Generate QR code
-    const otpauth = speakeasy.authenticator.keyuri(
-      userId, // Would be user email in production
-      TWO_FACTOR_CONFIG.TOTP_ISSUER,
-      secret,
-    );
-    const qrCode = await qrcode.toDataURL(otpauth);
-
-    // TODO: Save secret to database (not yet enabled)
-
-    return { secret, qrCode, backupCodes };
+    return this.twoFactorService.generateSetup(userId, email);
   }
 
   /**
@@ -315,26 +217,64 @@ export class AuthService {
    * @param code - TOTP code
    * @param secret - TOTP secret
    */
-  async verifyAndEnableTwoFactor(
-    userId: string,
-    code: string,
-    secret: string,
-  ): Promise<void> {
-    // Verify code
-    const isValid = speakeasy.authenticator.verify({
-      token: code,
-      secret,
-      // @ts-ignore - otplib types may be incomplete
-      window: TWO_FACTOR_CONFIG.TOTP_WINDOW,
-    });
-
-    if (!isValid) {
-      throw new InvalidTwoFactorCodeException();
-    }
-
+  async verifyAndEnableTwoFactor(userId: string, code: string, secret: string): Promise<void> {
+    this.twoFactorService.verifyCode(secret, code);
+    
     // TODO: Save to database and enable
     this.logger.log(`2FA enabled for user ${userId}`);
 
     await this.eventsService.publishTwoFactorEnabled(userId, 'totp');
   }
+
+  /**
+   * Disables two-factor authentication.
+   * @param userId - User ID
+   * @param code - TOTP code for verification
+   */
+  async disableTwoFactor(userId: string, code: string): Promise<void> {
+    // TODO: Verify code and disable 2FA
+    this.logger.log(`2FA disabled for user ${userId}`);
+    
+    await this.eventsService.publishTwoFactorDisabled(userId);
+  }
+
+  /**
+   * Validates password and throws exception if invalid.
+   */
+  private async validatePassword(password: string, hash: string, email: string): Promise<void> {
+    const isValid = await this.passwordService.verify(password, hash);
+    if (!isValid) {
+      await this.eventsService.publishLoginFailed(email, undefined, 'INVALID_PASSWORD');
+      throw new InvalidCredentialsException();
+    }
+  }
+
+  /**
+   * Validates email verification and throws exception if not verified.
+   */
+  private validateEmailVerification(isVerified: boolean, email: string): void {
+    if (!isVerified) {
+      throw new EmailNotVerifiedException(email);
+    }
+  }
+
+  /**
+   * Validates 2FA requirement and throws exception if required but not provided.
+   */
+  private validateTwoFactor(isEnabled: boolean, code?: string): void {
+    if (isEnabled && !code) {
+      throw new TwoFactorRequiredException('totp');
+    }
+  }
+
+  /**
+   * Generates a user ID.
+   * TODO: Replace with actual user creation in User Service
+   */
+  private generateUserId(): string {
+    return crypto.randomUUID();
+  }
 }
+
+// Import crypto for UUID generation
+import * as crypto from 'crypto';

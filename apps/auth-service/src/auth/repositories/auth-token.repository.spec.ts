@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 
 import { AuthTokenRepository } from './auth-token.repository';
 import { AuthToken, TokenType } from '../entities/auth-token.entity';
@@ -104,7 +104,7 @@ describe('AuthTokenRepository', () => {
       const result = await repository.findByTokenHash(tokenHash);
 
       expect(typeOrmRepository.findOne).toHaveBeenCalledWith({
-        where: { tokenHash, type: TokenType.REFRESH, revokedAt: null },
+        where: { tokenHash, type: TokenType.REFRESH, revokedAt: IsNull() as unknown as Date },
         relations: ['replacedByToken'],
       });
 
@@ -204,7 +204,7 @@ describe('AuthTokenRepository', () => {
       await repository.revokeAllUserTokens(userId);
 
       expect(typeOrmRepository.update).toHaveBeenCalledWith(
-        { userId, type: TokenType.REFRESH, revokedAt: null },
+        { userId, type: TokenType.REFRESH, revokedAt: IsNull() as unknown as Date },
         { revokedAt: expect.any(Date), type: TokenType.BLACKLISTED },
       );
     });
@@ -229,7 +229,7 @@ describe('AuthTokenRepository', () => {
 
       expect(result).toBe(3);
       expect(typeOrmRepository.count).toHaveBeenCalledWith({
-        where: { userId, type: TokenType.REFRESH, revokedAt: null },
+        where: { userId, type: TokenType.REFRESH, revokedAt: IsNull() as unknown as Date },
       });
     });
 

@@ -5,7 +5,6 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-  Req,
   Get,
   Delete,
   Param,
@@ -31,6 +30,7 @@ import {
   PasswordResetDto,
 } from '../dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
+import { CurrentUser, CurrentUserPayload } from '../../shared/decorators/current-user.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -85,7 +85,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Logout successful' })
   @HttpCode(HttpStatus.OK)
   async logout(@Body('refreshToken') refreshToken: string) {
-    // TODO: Implement logout logic (revoke token)
+    await this.authService.logout(refreshToken);
     return { success: true, message: 'Successfully logged out' };
   }
 
@@ -94,13 +94,9 @@ export class AuthController {
   @ApiBody({ type: RefreshTokenDto })
   @ApiResponse({ status: 200, description: 'Token refreshed' })
   @ApiResponse({ status: 401, description: 'Invalid or expired token' })
+  @ApiResponse({ status: 409, description: 'Token reuse detected' })
   async refresh(@Body() dto: RefreshTokenDto) {
-    // TODO: Implement token refresh with rotation
-    const tokens = await this.authService.generateTokens(
-      crypto.randomUUID(),
-      'user@example.com',
-    );
-
+    const tokens = await this.authService.refreshTokens(dto.refreshToken);
     return this.mapper.toRefreshTokenResponseDto(tokens);
   }
 
@@ -167,7 +163,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get active sessions' })
   @ApiResponse({ status: 200, description: 'Returns active sessions' })
-  async getSessions(@Req() req: any) {
+  async getSessions(@CurrentUser() user: CurrentUserPayload) {
     // TODO: Implement get sessions
     return { sessions: [], total: 0 };
   }
@@ -181,7 +177,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async terminateSession(
     @Param('sessionId') sessionId: string,
-    @Req() req: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
     // TODO: Implement session termination
     return { success: true, message: 'Session terminated' };
@@ -193,8 +189,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Terminate all other sessions' })
   @ApiResponse({ status: 200, description: 'All sessions terminated' })
   @HttpCode(HttpStatus.OK)
-  async terminateAllSessions(@Req() req: any) {
-    // TODO: Implement terminate all sessions
+  async terminateAllSessions(@CurrentUser() user: CurrentUserPayload) {
+    await this.authService.logoutAll(user.sub);
     return { success: true, message: 'All other sessions terminated', terminatedSessions: 0 };
   }
 
@@ -203,9 +199,8 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Enable two-factor authentication' })
   @ApiResponse({ status: 200, description: '2FA setup initiated' })
-  async enableTwoFactor(@Req() req: any) {
-    const userId = req.user.sub;
-    const result = await this.authService.enableTwoFactor(userId);
+  async enableTwoFactor(@CurrentUser() user: CurrentUserPayload) {
+    const result = await this.authService.enableTwoFactor(user.sub, user.email);
 
     return this.mapper.toTwoFactorResponseDto({
       success: true,
@@ -221,10 +216,9 @@ export class AuthController {
   @ApiBody({ schema: { properties: { code: { type: 'string' } } } })
   @ApiResponse({ status: 200, description: '2FA enabled' })
   @HttpCode(HttpStatus.OK)
-  async verifyTwoFactor(@Body('code') code: string, @Req() req: any) {
-    const userId = req.user.sub;
+  async verifyTwoFactor(@Body('code') code: string, @CurrentUser() user: CurrentUserPayload) {
     // TODO: Get secret from database (stored during enable)
-    await this.authService.verifyAndEnableTwoFactor(userId, code, 'temp-secret');
+    await this.authService.verifyAndEnableTwoFactor(user.sub, code, 'temp-secret');
 
     return { success: true, message: '2FA successfully enabled' };
   }
@@ -236,8 +230,8 @@ export class AuthController {
   @ApiBody({ schema: { properties: { code: { type: 'string' } } } })
   @ApiResponse({ status: 200, description: '2FA disabled' })
   @HttpCode(HttpStatus.OK)
-  async disableTwoFactor(@Body('code') code: string, @Req() req: any) {
-    // TODO: Implement 2FA disable
+  async disableTwoFactor(@Body('code') code: string, @CurrentUser() user: CurrentUserPayload) {
+    await this.authService.disableTwoFactor(user.sub, code);
     return { success: true, message: '2FA successfully disabled' };
   }
 }
