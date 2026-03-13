@@ -5,6 +5,7 @@
 **streetEye** is a monorepo built with [Turborepo](https://turborepo.dev/) that contains a full-stack application with:
 
 - **NestJS API** (`apps/api`) - Backend REST API running on port 3000
+- **Auth Service** (`apps/auth-service`) - Authentication & authorization running on port 3001
 - **Next.js Web App** (`apps/web`) - Frontend application running on port 3001
 - **Content Service** (`apps/content-service`) - Additional NestJS backend running on port 3002
 - **Challenge Service** (`apps/challenge-service`) - Photography challenges backend running on port 3002
@@ -16,6 +17,7 @@
 streetEye/
 ├── apps/
 │   ├── api/                 # NestJS backend (port 3000)
+│   ├── auth-service/        # Auth service (port 3001)
 │   ├── web/                 # Next.js frontend (port 3001)
 │   ├── content-service/     # NestJS backend (port 3002)
 │   └── challenge-service/   # NestJS backend (port 3002)
@@ -76,6 +78,7 @@ pnpm dev
 
 This starts:
 - NestJS API on http://localhost:3000
+- Auth Service on http://localhost:3001
 - Next.js Web on http://localhost:3001
 - Content Service on http://localhost:3002
 - Challenge Service on http://localhost:3002
@@ -142,6 +145,7 @@ Each NestJS service provides Swagger documentation:
 | Service | Swagger URL |
 |---------|-------------|
 | API | http://localhost:3000/api/docs |
+| Auth Service | http://localhost:3001/api/docs |
 | Challenge Service | http://localhost:3002/api/docs |
 
 ### API Endpoints
@@ -153,6 +157,34 @@ Each NestJS service provides Swagger documentation:
 - `POST /api/v1/links` - Create new link
 - `PATCH /api/v1/links/:id` - Update link
 - `DELETE /api/v1/links/:id` - Delete link
+
+#### Auth Service (`apps/auth-service`)
+
+**Authentication:**
+- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/login` - Login user
+- `POST /api/v1/auth/logout` - Logout user
+- `POST /api/v1/auth/refresh` - Refresh access token
+
+**Email Verification:**
+- `POST /api/v1/auth/verify-email` - Verify email address
+- `POST /api/v1/auth/resend-verification` - Resend verification code
+
+**Password Reset:**
+- `POST /api/v1/auth/password/reset-request` - Request password reset
+- `POST /api/v1/auth/password/reset` - Reset password with token
+
+**2FA:**
+- `POST /api/v1/auth/2fa/enable` - Enable 2FA
+- `POST /api/v1/auth/2fa/verify` - Verify 2FA code
+- `POST /api/v1/auth/2fa/disable` - Disable 2FA
+
+**Sessions:**
+- `GET /api/v1/auth/sessions` - Get active sessions
+- `DELETE /api/v1/auth/sessions/:sessionId` - Terminate session
+- `DELETE /api/v1/auth/sessions/all` - Terminate all sessions
+
+See full documentation in `specs/auth-service-spec.md`
 
 #### Challenge Service (`apps/challenge-service`)
 
@@ -181,6 +213,29 @@ See full documentation in `apps/challenge-service/API.md`
 - Uses shared guards, filters, and services from `@repo/api`
 - Swagger documentation enabled
 - CORS enabled for frontend communication
+
+### Auth Service (`apps/auth-service`)
+
+- NestJS authentication & authorization service
+- Features:
+  - JWT-based authentication (access + refresh tokens)
+  - Email verification with 6-digit codes
+  - Password reset flow
+  - TOTP-based 2FA with backup codes
+  - Session management with token rotation
+  - Rate limiting & brute force protection
+- Architecture:
+  - Extracted services (TokenService, PasswordService, TwoFactorService)
+  - RefreshTokenStrategy pattern for token rotation
+  - Custom exception classes
+  - @CurrentUser() decorator
+- Uses shared infrastructure:
+  - PostgreSQL for data persistence
+  - Redis for token blacklist & rate limiting
+  - RabbitMQ for event publishing
+- Swagger documentation enabled
+- Port: 3001
+- Swagger UI: http://localhost:3001/api/docs
 
 ### Challenge Service (`apps/challenge-service`)
 
@@ -250,6 +305,8 @@ Contains shared NestJS resources:
 
 | Service | Container | Port | Purpose |
 |---------|-----------|------|---------|
+| PostgreSQL | auth-service-db | 5431 | Auth Service DB |
+| PostgreSQL | auth-service-db-test | 5436 | Auth Service Test DB |
 | PostgreSQL | challenge-service-db | 5434 | Challenge Service DB |
 | PostgreSQL | challenge-service-db-test | 5435 | Challenge Service Test DB |
 | PostgreSQL | content-service-db | 5432 | Content Service DB |
@@ -271,7 +328,17 @@ REDIS_PASSWORD=redis
 RABBITMQ_URI=amqp://rabbitmq:rabbitmq@localhost:5672
 RABBITMQ_EXCHANGE=streetEye
 
-# Database
+# Auth Service
+AUTH_SERVICE_DB_HOST=localhost
+AUTH_SERVICE_DB_PORT=5431
+AUTH_SERVICE_DB_USERNAME=postgres
+AUTH_SERVICE_DB_PASSWORD=postgres
+AUTH_SERVICE_DB_DATABASE=streeteye_auth
+JWT_SECRET=your-super-secret-key-min-32-chars
+JWT_ACCESS_TTL=900
+JWT_REFRESH_TTL=604800
+
+# Challenge Service
 CHALLENGE_SERVICE_DB_HOST=localhost
 CHALLENGE_SERVICE_DB_PORT=5434
 ```
@@ -302,6 +369,27 @@ npx turbo link
 
 ## Recent Changes
 
+### 2025 Refactoring
+
+- **Auth Service Creation:** New authentication service
+  - JWT-based authentication with token rotation
+  - Email verification flow
+  - Password reset functionality
+  - TOTP 2FA with backup codes
+  - Session management
+  - Rate limiting & brute force protection
+  - Extracted services (TokenService, PasswordService, TwoFactorService)
+  - RefreshTokenStrategy pattern
+  - @CurrentUser() decorator
+  - 91 unit tests
+
+- **Code Refactoring:** Comprehensive refactoring of auth-service
+  - Single Responsibility Principle applied
+  - Strategy pattern for token rotation
+  - Custom exception classes
+  - Guard clauses and naming improvements
+  - JSDoc documentation added
+
 ### 2024 Refactoring
 
 - **Code Refactoring:** Comprehensive refactoring of challenge-service
@@ -316,6 +404,8 @@ npx turbo link
   - Guards, filters, decorators
   - Redis and RabbitMQ services
   - Pagination utilities
+  - JWT authentication guard
+  - Password validation
 
 - **API Documentation:** Added Swagger/OpenAPI documentation
   - Decorated all DTOs and controllers
