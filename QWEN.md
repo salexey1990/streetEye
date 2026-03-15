@@ -4,8 +4,10 @@
 
 **streetEye** is a monorepo built with [Turborepo](https://turborepo.dev/) that contains a full-stack application with:
 
-- **NestJS API** (`apps/api`) - Backend REST API running on port 3000
+- **API Gateway** (`apps/api-gateway`) - API Gateway running on port 3000
+- **NestJS API** (`apps/api`) - Backend REST API (legacy, port 3000)
 - **Auth Service** (`apps/auth-service`) - Authentication & authorization running on port 3001
+- **User Service** (`apps/user-service`) - User profiles & subscriptions running on port 3002
 - **Next.js Web App** (`apps/web`) - Frontend application running on port 3001
 - **Content Service** (`apps/content-service`) - Additional NestJS backend running on port 3002
 - **Challenge Service** (`apps/challenge-service`) - Photography challenges backend running on port 3002
@@ -16,8 +18,10 @@
 ```
 streetEye/
 ├── apps/
-│   ├── api/                 # NestJS backend (port 3000)
+│   ├── api-gateway/         # API Gateway (port 3000)
+│   ├── api/                 # NestJS backend (legacy, port 3000)
 │   ├── auth-service/        # Auth service (port 3001)
+│   ├── user-service/        # User service (port 3002)
 │   ├── web/                 # Next.js frontend (port 3001)
 │   ├── content-service/     # NestJS backend (port 3002)
 │   └── challenge-service/   # NestJS backend (port 3002)
@@ -77,8 +81,9 @@ pnpm dev
 ```
 
 This starts:
-- NestJS API on http://localhost:3000
+- API Gateway on http://localhost:3000
 - Auth Service on http://localhost:3001
+- User Service on http://localhost:3002
 - Next.js Web on http://localhost:3001
 - Content Service on http://localhost:3002
 - Challenge Service on http://localhost:3002
@@ -144,9 +149,10 @@ Each NestJS service provides Swagger documentation:
 
 | Service | Swagger URL |
 |---------|-------------|
-| API | http://localhost:3000/api/docs |
+| API Gateway | http://localhost:3000/api/docs |
 | Auth Service | http://localhost:3001/api/docs |
-| Challenge Service | http://localhost:3002/api/docs |
+| User Service | http://localhost:3002/api/docs |
+| Challenge Service | http://localhost:3003/api/docs |
 
 ### API Endpoints
 
@@ -186,6 +192,62 @@ Each NestJS service provides Swagger documentation:
 
 See full documentation in `specs/auth-service-spec.md`
 
+#### User Service (`apps/user-service`)
+
+**Profile:**
+- `GET /api/v1/users/:id/profile` - Get user profile
+- `PUT /api/v1/users/:id/profile` - Update user profile
+- `DELETE /api/v1/users/:id/account` - Delete user account (GDPR)
+
+**Subscriptions:**
+- `GET /api/v1/users/:id/subscription` - Get user subscription
+- `POST /api/v1/users/:id/subscription/upgrade` - Upgrade subscription
+- `POST /api/v1/users/:id/subscription/cancel` - Cancel subscription
+- `POST /api/v1/users/:id/subscription/restore` - Restore subscription
+
+**Purchases:**
+- `GET /api/v1/users/:id/purchases` - Get purchase history
+- `POST /api/v1/users/:id/purchases/courses/:courseId` - Purchase course
+
+**Admin:**
+- `GET /api/v1/admin/users` - List all users (admin only)
+- `GET /api/v1/admin/users/:id` - Get user details (admin only)
+- `POST /api/v1/admin/users/:id/ban` - Ban user (admin only)
+- `POST /api/v1/admin/users/:id/unban` - Unban user (admin only)
+
+See full documentation in `specs/user-service-spec.md`
+
+#### API Gateway (`apps/api-gateway`)
+
+The API Gateway routes all requests to appropriate microservices:
+
+| Path Prefix | Target Service | Port |
+|-------------|----------------|------|
+| `/api/v1/auth/*` | Auth Service | 3001 |
+| `/api/v1/users/*` | User Service | 3002 |
+| `/api/v1/challenges/*` | Challenge Service | 3003 |
+| `/api/v1/marathons/*` | Marathon Service | 3004 |
+| `/api/v1/progress/*` | Progress Service | 3005 |
+| `/api/v1/ai/*` | AI Service | 3006 |
+| `/api/v1/notifications/*` | Notification Service | 3007 |
+| `/api/v1/geo/*` | Geo Service | 3008 |
+| `/api/v1/files/*` | File Service | 3009 |
+| `/api/v1/analytics/*` | Analytics Service | 3010 |
+
+**Features:**
+- JWT authentication
+- Rate limiting (100 req/min anonymous, 1000 req/min authenticated)
+- Response caching (Redis, TTL 5-60 minutes)
+- Circuit breaker for fault tolerance
+- Retry with exponential backoff
+- Request/Response logging with correlation ID
+
+**Health & Monitoring:**
+- `GET /api/v1/health` - Health check for all services
+- `GET /api/v1/health/circuits` - Circuit breaker statistics
+
+See full documentation in `specs/api-gateway-spec.md`
+
 #### Challenge Service (`apps/challenge-service`)
 
 **Challenges:**
@@ -209,10 +271,34 @@ See full documentation in `apps/challenge-service/API.md`
 
 ### API (`apps/api`)
 
-- NestJS application with Links module
+- NestJS application with Links module (legacy)
 - Uses shared guards, filters, and services from `@repo/api`
 - Swagger documentation enabled
 - CORS enabled for frontend communication
+
+### API Gateway (`apps/api-gateway`)
+
+- NestJS API Gateway for routing requests to microservices
+- Features:
+  - Request routing to 10 microservices
+  - JWT authentication and authorization
+  - Rate limiting (100 req/min anon, 1000 req/min auth)
+  - Response caching with Redis (TTL 5-60 min)
+  - Circuit breaker for fault tolerance
+  - Retry with exponential backoff
+  - Request/Response logging with correlation ID
+- Architecture:
+  - Service discovery for path-based routing
+  - Proxy service with retry logic
+  - Health checks for all microservices
+  - Circuit breaker per service
+- Uses shared infrastructure:
+  - Redis for caching and rate limiting
+  - RabbitMQ for event publishing
+- Swagger documentation enabled
+- Port: 3000
+- Swagger UI: http://localhost:3000/api/docs
+- Health Check: http://localhost:3000/health
 
 ### Auth Service (`apps/auth-service`)
 
@@ -251,6 +337,28 @@ See full documentation in `apps/challenge-service/API.md`
   - RabbitMQ for event publishing
 - Swagger documentation enabled
 - Refactored with SOLID principles (2024)
+
+### User Service (`apps/user-service`)
+
+- NestJS user profile and subscription management service
+- Features:
+  - User profile management (GET/PUT)
+  - Subscription management (Free/Premium/Masterclass)
+  - Course purchases (Masterclass)
+  - Achievements and statistics
+  - GDPR compliance (export/delete data)
+- Architecture:
+  - Extracted services (SubscriptionService, PurchasesService, GDPRService)
+  - Stripe integration for payments
+  - Redis caching for profiles
+  - Event publishing for analytics
+- Uses shared infrastructure:
+  - PostgreSQL for data persistence
+  - Redis for caching
+  - RabbitMQ for event publishing
+- Swagger documentation enabled
+- Port: 3002
+- Swagger UI: http://localhost:3002/api/docs
 
 ### Content Service (`apps/content-service`)
 
@@ -307,12 +415,15 @@ Contains shared NestJS resources:
 |---------|-----------|------|---------|
 | PostgreSQL | auth-service-db | 5431 | Auth Service DB |
 | PostgreSQL | auth-service-db-test | 5436 | Auth Service Test DB |
+| PostgreSQL | user-service-db | 5437 | User Service DB |
+| PostgreSQL | user-service-db-test | 5438 | User Service Test DB |
 | PostgreSQL | challenge-service-db | 5434 | Challenge Service DB |
 | PostgreSQL | challenge-service-db-test | 5435 | Challenge Service Test DB |
 | PostgreSQL | content-service-db | 5432 | Content Service DB |
 | PostgreSQL | content-service-db-test | 5433 | Content Service Test DB |
 | Redis | redis | 6379 | Shared cache |
 | RabbitMQ | rabbitmq | 5672, 15672 | Message broker |
+| API Gateway | api-gateway | 3000 | API Gateway |
 
 ### Environment Variables
 
@@ -368,6 +479,32 @@ npx turbo link
 ```
 
 ## Recent Changes
+
+### 2026 Refactoring
+
+- **API Gateway Creation:** New API Gateway service
+  - Request routing to 10 microservices
+  - JWT authentication and authorization
+  - Rate limiting (100 req/min anon, 1000 req/min auth)
+  - Response caching with Redis (TTL 5-60 min)
+  - Circuit breaker for fault tolerance
+  - Retry with exponential backoff
+  - Request/Response logging with correlation ID
+  - Service discovery for path-based routing
+  - Health checks for all microservices
+  - 24 compiled JS files
+  - Full refactoring with configuration constants
+
+- **User Service Creation:** New user profile and subscription service
+  - User profile management (GET/PUT/DELETE)
+  - Subscription management (Free/Premium/Masterclass)
+  - Course purchases with Stripe integration
+  - Achievements and statistics
+  - GDPR compliance (export/delete data)
+  - 9 database tables
+  - Full DTO validation
+  - Custom exception classes
+  - 49 compiled JS files
 
 ### 2025 Refactoring
 

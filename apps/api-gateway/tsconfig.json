@@ -1,0 +1,20 @@
+{
+  "extends": "@repo/typescript-config/nestjs.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strictNullChecks": true,
+    "incremental": false,
+    "paths": {
+      "@gateway/*": ["src/gateway/*"],
+      "@middleware/*": ["src/middleware/*"],
+      "@interceptors/*": ["src/interceptors/*"],
+      "@filters/*": ["src/filters/*"],
+      "@guards/*": ["src/guards/*"],
+      "@config/*": ["src/config/*"],
+      "@events/*": ["src/events/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "jest.config.ts"]
+}
